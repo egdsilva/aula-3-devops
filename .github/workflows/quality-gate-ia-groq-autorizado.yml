@@ -1,0 +1,69 @@
+name: Quality Gate com IA (GroqCloud) - Autorizado
+
+on:
+  workflow_dispatch:
+
+jobs:
+  quality-gate-ia-groq-autorizado:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Coletar metricas
+        run: |
+          npx jest tests_alta_ia_autorizado --coverage --collectCoverageFrom="src_alta/**/*.ts" --coverageReporters=text --coverageReporters=json-summary || true
+
+          COV=$(node -e "const s=require('./coverage/coverage-summary.json'); console.log(Math.round(s.total.lines.pct));")
+          echo "Cobertura calculada: $COV%"
+          echo "COVERAGE=$COV" >> "$GITHUB_ENV"
+
+      - name: Consultar IA - Quality Gate
+        env:
+          GROQCLOUD_API_KEY: ${{ secrets.GROQ }}
+        run: |
+          if [ -z "$GROQCLOUD_API_KEY" ]; then
+            echo "::error::Secret GROQCLOUD_API_KEY nao configurado."
+            exit 1
+          fi
+
+          echo "Consultando IA sobre qualidade do codigo..."
+
+          RESPONSE=$(curl -s https://api.groq.com/openai/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GROQ" \
+            -d '{
+              "model": "llama-3.1-8b-instant",
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Voce e um quality gate de pipeline CI/CD. Responda apenas APROVADO ou BLOQUEADO seguido de uma justificativa curta."
+                },
+                {
+                  "role": "user",
+                  "content": "Cobertura de testes: '"$COVERAGE"'%. Projeto Node/TypeScript com tratamento de divisao por zero e testes automatizados cobrindo cenarios principais. Deve avancar para producao?"
+                }
+              ]
+            }')
+
+          echo "Resposta da IA:"
+          echo "$RESPONSE"
+
+          DECISION=$(echo "$RESPONSE" | node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync(0,'utf8')); console.log((r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content ? r.choices[0].message.content : 'BLOQUEADO - erro ao consultar IA').trim());")
+
+          echo "Decisao final da IA:"
+          echo "$DECISION"
+
+          if echo "$DECISION" | grep -qi "BLOQUEADO"; then
+            echo "::error::Quality Gate BLOQUEADO pela IA"
+            exit 1
+          fi

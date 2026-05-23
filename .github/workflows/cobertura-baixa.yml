@@ -1,0 +1,35 @@
+name: Cobertura Baixa
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cobertura-baixa:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Rodar testes (baixa)
+        run: npx jest tests_baixa --coverage --collectCoverageFrom="src_baixa/**/*.ts" --coverageReporters=text --coverageReporters=json-summary
+
+      - name: Quality Gate
+        run: |
+          COVERAGE=$(node -e "const s=require('./coverage/coverage-summary.json'); console.log(s.total.lines.pct)")
+          echo "Cobertura: $COVERAGE%"
+
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Falhou"
+            exit 1
+          else
+            echo "Aprovado"
+          fi
