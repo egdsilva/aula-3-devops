@@ -29,7 +29,7 @@ jobs:
 
       - name: Consultar IA - Quality Gate
         env:
-          GROQCLOUD_API_KEY: ${{ secrets.GROQ }}
+          GROQCLOUD_API_KEY: ${{ secrets.GROQCLOUD_API_KEY }}
         run: |
           if [ -z "$GROQCLOUD_API_KEY" ]; then
             echo "::error::Secret GROQCLOUD_API_KEY nao configurado."
@@ -40,7 +40,7 @@ jobs:
 
           RESPONSE=$(curl -s https://api.groq.com/openai/v1/chat/completions \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $GROQ" \
+            -H "Authorization: Bearer $GROQCLOUD_API_KEY" \
             -d '{
               "model": "llama-3.1-8b-instant",
               "messages": [
