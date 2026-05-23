@@ -1,4 +1,4 @@
-name: IA analisando métricas - aprovado pela IA
+name: IA analisando métricas - reprovado pela IA
  
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
  
-      - name: IA analisa métricas - aprovado pela IA
+      - name: IA analisa métricas - reprovado pela IA
         env:
           GROQCLOUD_API_KEY: ${{ secrets.GROQCLOUD_API_KEY }}
  
@@ -29,7 +29,7 @@ jobs:
  
           echo "Lendo métricas..."
  
-          METRICS=$(cat metrics/system-aprovado.json | jq -c . | sed 's/"/\\"/g')
+          METRICS=$(cat metrics/system-reprovado.json | jq -c . | sed 's/"/\\"/g')
  
           RESPONSE=$(curl -s https://api.groq.com/openai/v1/chat/completions \
             -H "Content-Type: application/json" \
@@ -74,4 +74,4 @@ jobs:
           fi
          
           echo "✅ Métricas aprovadas! Pipeline prosseguindo..."
-          exit 0    
+          exit 0
