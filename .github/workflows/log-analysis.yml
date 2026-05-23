@@ -9,6 +9,8 @@ on:
  
 # Permissões necessárias
 permissions:
+  # Permite checkout do código-fonte
+  contents: read
  
   # Permite criar issues automaticamente
   issues: write
