@@ -1,0 +1,62 @@
+name: IA analisando traces
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+
+  analisar-traces:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Login GitHub CLI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: IA analisa traces
+        env:
+          GROQCLOUD_API_KEY: ${{ secrets.GROQCLOUD_API_KEY }}
+
+        run: |
+
+          TRACE=$(cat traces/payment_trace.txt | tr '\n' ' ')
+
+          RESPONSE=$(curl -s https://api.groq.com/openai/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GROQCLOUD_API_KEY" \
+            -d '{
+              "model": "llama-3.1-8b-instant",
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Você é especialista em distributed tracing e performance de sistemas distribuídos. Sua análise deve ser técnica, detalhada e orientada a ação. Sempre estruture sua resposta com seções claras: resumo executivo, gargalos identificados (com causa raiz, serviço afetado e duração), impacto no usuário final, e recomendações de correção priorizadas por criticidade."
+                },
+                {
+                  "role": "user",
+                  "content": "Analise este trace distribuído com máximo detalhamento:\n\n'"$TRACE"'\n\nPara cada gargalo encontrado, informe:\n1. Qual serviço ou operação está lento e qual é a duração observada vs esperada\n2. Causa raiz provável (ex: query N+1, lock de banco, latência de rede, serialização, falta de cache)\n3. Se há dependências bloqueantes ou chamadas síncronas desnecessárias\n4. Impacto em cascata nos serviços downstream\n5. Recomendação técnica objetiva para correção\n\nClassifique cada gargalo como: CRÍTICO (impacta SLA), ALTO (degradação perceptível), MÉDIO (otimização recomendada)."
+                }
+              ]
+            }')
+
+          echo "$RESPONSE"
+
+          DECISION=$(echo "$RESPONSE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r['choices'][0]['message']['content'])")
+
+          echo "$DECISION"
+
+          if echo "$DECISION" | grep -qiE "timeout|gargalo|crítico|CRÍTICO|crítica|bloqueante|degradação"; then
+
+            gh issue create \
+              --title "Gargalo detectado em trace distribuído" \
+              --body "$DECISION"
+
+            exit 1
+
+          fi
