@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "types": ["jest", "node"]
+  },
+  "include": ["src_alta/**/*.ts", "src_baixa/**/*.ts", "tests_alta/**/*.ts", "tests_alta_ia_autorizado/**/*.ts", "tests_baixa/**/*.ts"]
+}
